@@ -64,10 +64,14 @@ app.get('/', (req, res) => {
         <h2>NEKpay ম্যানুয়াল পেআউট</h2>
         <div class="proxy-info">আউটগোয়িং আইপি: <b>31.59.20.176</b> (Marchant: 808258213)</div>
         <form method="POST" action="/submit-payout">
-          <label>পেমেন্ট চ্যানেল:</label>
+          <label>পেমেন্ট চ্যানেল (বিকাশ / নগদ কোড):</label>
           <select name="bank_code">
-            <option value="IDPT0001">বিকাশ (bKash)</option>
-            <option value="IDPT0002">নগদ (Nagad)</option>
+            <option value="BKASH">বিকাশ (BKASH)</option>
+            <option value="BKASH2">বিকাশ (BKASH2)</option>
+            <option value="2222">বিকাশ (2222)</option>
+            <option value="NAGAD">নগদ (NAGAD)</option>
+            <option value="NAGAD2">নগদ (NAGAD2)</option>
+            <option value="2221">নগদ (2221)</option>
           </select>
 
           <label>মোবাইল নাম্বার (১১ সংখ্যা):</label>
@@ -76,8 +80,8 @@ app.get('/', (req, res) => {
           <label>গ্রাহকের নাম (কমপক্ষে ৫ ইংরেজি অক্ষর):</label>
           <input type="text" name="receive_name" value="CustomerName" required />
 
-          <label>টাকার পরিমাণ (পূর্ণ সংখ্যা):</label>
-          <input type="number" name="transfer_amount" placeholder="100" min="1" step="1" required />
+          <label>টাকার পরিমাণ (মিনিমাম ১০০):</label>
+          <input type="number" name="transfer_amount" placeholder="100" min="100" step="1" required />
 
           <button type="submit">উইথড্র কনফার্ম করুন</button>
         </form>
