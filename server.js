@@ -14,7 +14,7 @@ const httpsAgent = new HttpsProxyAgent(PROXY_URL);
 // NEKpay Credentials
 const CONFIG = {
   mch_id: "808258213", 
-  secret_key: "d3e912a25c7e4e059832173b16b9e3c9", 
+  secret_key: "TEATKHM0RPB9ZAVAUHDZPLYHYWLVGI9D", 
   api_url: "https://api.nekpayment.com/pay/transfer"
 };
 
