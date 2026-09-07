@@ -66,7 +66,8 @@ app.get('/', (req, res) => {
         <form method="POST" action="/submit-payout">
           <label>পেমেন্ট চ্যানেল:</label>
           <select name="bank_code">
-            <option value="BDT25000f012">বিকাশ (bKash)</option>
+            <option value="baksha">বিকাশ (bKash)</option>
+            <option value="and">নগদ (Nagad)</option>
           </select>
 
           <label>মোবাইল নাম্বার (১১ সংখ্যা):</label>
