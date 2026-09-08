@@ -11,11 +11,12 @@ app.use(express.json());
 const PROXY_URL = "http://bcepepze:oo1pdvtip38f@31.59.20.176:6754";
 const httpsAgent = new HttpsProxyAgent(PROXY_URL);
 
-// NEKpay Credentials
+// NEKpay Credentials & Endpoints
 const CONFIG = {
   mch_id: "808258213", 
   secret_key: "TEATKHM0RPB9ZAVAUHDZPLYHYWLVGI9D", 
-  api_url: "https://api.nekpayment.com/pay/transfer"
+  transfer_url: "https://api.watchglb.com/pay/transfer",
+  balance_url: "https://api.watchglb.com/query/balance"
 };
 
 // সময় ফরম্যাট: yyyy-MM-dd HH:mm:ss
@@ -29,62 +30,153 @@ function getCurrentDate() {
 function generateSign(params, secretKey) {
   const filtered = {};
   for (const key of Object.keys(params)) {
-    if (params[key] !== '' && params[key] !== null && params[key] !== undefined && key !== 'sign' && key !== 'sign_type') {
-      filtered[key] = params[key];
+    const val = params[key];
+    const lower = key.toLowerCase();
+    if (val !== '' && val !== null && val !== undefined && lower !== 'sign' && lower !== 'sign_type') {
+      filtered[key] = val;
     }
   }
 
   const sortedKeys = Object.keys(filtered).sort();
   const sortedString = sortedKeys.map(k => `${k}=${filtered[k]}`).join('&');
   const stringToSign = `${sortedString}&key=${secretKey}`;
-  return crypto.createHash('md5').update(stringToSign, 'utf8').digest('hex');
+  return crypto.createHash('md5').update(stringToSign, 'utf8').digest('hex').toLowerCase();
 }
 
-// ম্যানুয়াল পেআউট ড্যাশবোর্ড UI
+// ড্যাশবোর্ড UI
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
-    <html>
+    <html lang="bn">
     <head>
+      <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>NEKpay Payout Panel</title>
       <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
-        .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 420px; }
-        h2 { margin-top: 0; color: #1a1a1a; text-align: center; }
-        label { display: block; margin: 14px 0 6px; font-weight: 600; font-size: 14px; color: #333; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
-        button { width: 100%; padding: 12px; background: #008060; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-top: 22px; cursor: pointer; }
-        button:hover { background: #006e52; }
-        .proxy-info { background: #e8f5e9; padding: 10px; border-radius: 6px; font-size: 12px; color: #2e7d32; text-align: center; margin-bottom: 15px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b1329; color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .card { background: #1a233a; width: 100%; max-width: 420px; border-radius: 12px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        h2 { margin: 0 0 16px 0; color: #38bdf8; text-align: center; }
+        .proxy-badge { background: #0b1329; border: 1px solid #334155; border-radius: 8px; padding: 12px; text-align: center; margin-bottom: 18px; font-size: 13px; color: #94a3b8; }
+        .proxy-badge b { color: #38bdf8; }
+        .bal-box { font-size: 15px; font-weight: bold; color: #4ade80; margin-top: 6px; }
+        .refresh-btn { background: #334155; color: #fff; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; margin-top: 6px; }
+        label { display: block; margin: 14px 0 6px; font-size: 13px; color: #94a3b8; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #334155; border-radius: 8px; background: #0b1329; color: #fff; box-sizing: border-box; font-size: 15px; }
+        button.submit-btn { width: 100%; padding: 14px; background: #0284c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-top: 20px; cursor: pointer; }
+        button.submit-btn:hover { background: #0369a1; }
+        .res-box { margin-top: 20px; padding: 12px; border-radius: 8px; font-size: 12px; word-break: break-all; background: #0b1329; border: 1px solid #334155; display: none; }
       </style>
     </head>
     <body>
       <div class="card">
         <h2>NEKpay ম্যানুয়াল পেআউট</h2>
-        <div class="proxy-info">আউটগোয়িং আইপি: <b>31.59.20.176</b> (Marchant: 808258213)</div>
-        <form method="POST" action="/submit-payout">
-          <label>পেমেন্ট চ্যানেল:</label>
-          <select name="bank_code">
-            <option value="baksha">বিকাশ (bKash)</option>
-            <option value="and">নগদ (Nagad)</option>
+        
+        <div class="proxy-badge">
+          Proxy IP: <b>31.59.20.176</b> | Merchant: <b>808258213</b>
+          <div id="balVal" class="bal-box">ব্যালেন্স: লোড হচ্ছে...</div>
+          <button type="button" class="refresh-btn" onclick="checkBalance()">Refresh Balance</button>
+        </div>
+
+        <form id="payoutForm" onsubmit="handlePayout(event)">
+          <label>পেমেন্ট মেথড:</label>
+          <select id="bank_code" required>
+            <option value="BDT25000f012">bKash (BDT25000f012)</option>
+            <option value="BDT25000f019">DBBL / Rocket (BDT25000f019)</option>
           </select>
 
-          <label>মোবাইল নাম্বার (১১ সংখ্যা):</label>
-          <input type="text" name="receive_account" placeholder="017xxxxxxxx" maxlength="11" required />
+          <label>মোবাইল নাম্বার (১১ ডিজিট):</label>
+          <input type="text" id="receive_account" placeholder="017xxxxxxxx" maxlength="11" required />
 
-          <label>গ্রাহকের নাম (কমপক্ষে ৫ ইংরেজি অক্ষর):</label>
-          <input type="text" name="receive_name" value="CustomerName" required />
+          <label>গ্রাহকের নাম:</label>
+          <input type="text" id="receive_name" value="Customer" required />
 
-          <label>টাকার পরিমাণ (মিনিমাম ১০০):</label>
-          <input type="number" name="transfer_amount" placeholder="100" min="100" step="1" required />
+          <label>টাকার পরিমাণ (BDT):</label>
+          <input type="number" id="transfer_amount" placeholder="100" min="100" step="1" required />
 
-          <button type="submit">উইথড্র কনফার্ম করুন</button>
+          <button type="submit" id="btnSubmit" class="submit-btn">Send Payout</button>
         </form>
+
+        <pre id="resultBox" class="res-box"></pre>
       </div>
+
+      <script>
+        async function checkBalance() {
+          const bal = document.getElementById('balVal');
+          bal.innerText = "ব্যালেন্স: চেক করা হচ্ছে...";
+          try {
+            const res = await fetch('/api/balance');
+            const data = await res.json();
+            if (data.respCode === "SUCCESS") {
+              bal.innerText = "Available Balance: " + data.availableAmount + " BDT";
+            } else {
+              bal.innerText = "Error: " + (data.errorMsg || "Failed");
+            }
+          } catch (e) {
+            bal.innerText = "ব্যালেন্স লোড ব্যর্থ হয়েছে";
+          }
+        }
+
+        async function handlePayout(e) {
+          e.preventDefault();
+          const btn = document.getElementById('btnSubmit');
+          const resBox = document.getElementById('resultBox');
+          btn.disabled = true;
+          btn.innerText = "প্রসেসিং হচ্ছে...";
+          resBox.style.display = "none";
+
+          const payload = {
+            bank_code: document.getElementById('bank_code').value,
+            receive_account: document.getElementById('receive_account').value,
+            receive_name: document.getElementById('receive_name').value,
+            transfer_amount: document.getElementById('transfer_amount').value
+          };
+
+          try {
+            const res = await fetch('/submit-payout', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            resBox.style.display = "block";
+            resBox.innerText = JSON.stringify(data, null, 2);
+            checkBalance();
+          } catch (err) {
+            resBox.style.display = "block";
+            resBox.innerText = "Request Failed: " + err.message;
+          } finally {
+            btn.disabled = false;
+            btn.innerText = "Send Payout";
+          }
+        }
+
+        checkBalance();
+      </script>
     </body>
     </html>
   `);
+});
+
+// ব্যালেন্স চেক API
+app.get('/api/balance', async (req, res) => {
+  const payload = {
+    mch_id: CONFIG.mch_id,
+    sign_type: "MD5"
+  };
+  payload.sign = generateSign(payload, CONFIG.secret_key);
+
+  const formBody = new URLSearchParams(payload).toString();
+
+  try {
+    const response = await axios.post(CONFIG.balance_url, formBody, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      httpsAgent: httpsAgent,
+      timeout: 30000
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message, details: error.response ? error.response.data : null });
+  }
 });
 
 // পেআউট প্রসেস হ্যান্ডলার
@@ -105,40 +197,18 @@ app.post('/submit-payout', async (req, res) => {
     sign_type: "MD5"
   };
 
-  const sign = generateSign(payload, CONFIG.secret_key);
-  payload.sign = sign;
-
+  payload.sign = generateSign(payload, CONFIG.secret_key);
   const formBody = new URLSearchParams(payload).toString();
 
   try {
-    const response = await axios.post(CONFIG.api_url, formBody, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
+    const response = await axios.post(CONFIG.transfer_url, formBody, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       httpsAgent: httpsAgent,
       timeout: 30000
     });
-
-    res.send(`
-      <div style="font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto;">
-        <h2>পেআউট রেসপন্স</h2>
-        <div style="background: #f4f4f4; padding: 15px; border-radius: 8px;">
-          <pre>${JSON.stringify(response.data, null, 2)}</pre>
-        </div>
-        <br/>
-        <a href="/" style="display: inline-block; padding: 10px 16px; background: #008060; color: white; text-decoration: none; border-radius: 6px;">আরেকটি পেআউট করুন</a>
-      </div>
-    `);
+    res.json(response.data);
   } catch (error) {
-    res.status(500).send(`
-      <div style="font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto;">
-        <h2 style="color: red;">ব্যর্থ হয়েছে</h2>
-        <p><b>Error:</b> ${error.message}</p>
-        ${error.response ? `<pre>${JSON.stringify(error.response.data, null, 2)}</pre>` : ''}
-        <br/>
-        <a href="/">পুনরায় চেষ্টা করুন</a>
-      </div>
-    `);
+    res.status(500).json({ error: error.message, details: error.response ? error.response.data : null });
   }
 });
 
