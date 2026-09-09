@@ -11,12 +11,12 @@ app.use(express.json());
 const PROXY_URL = "http://bcepepze:oo1pdvtip38f@31.59.20.176:6754";
 const httpsAgent = new HttpsProxyAgent(PROXY_URL);
 
-// NEKpay Credentials & Endpoints
+// NEKpay Credentials & Official Endpoints
 const CONFIG = {
   mch_id: "808258213", 
   secret_key: "TEATKHM0RPB9ZAVAUHDZPLYHYWLVGI9D", 
-  transfer_url: "https://api.watchglb.com/pay/transfer",
-  balance_url: "https://api.watchglb.com/query/balance"
+  transfer_url: "https://api.nekpayment.com/pay/transfer",
+  balance_url: "https://api.nekpayment.com/query/balance"
 };
 
 // সময় ফরম্যাট: yyyy-MM-dd HH:mm:ss
@@ -26,7 +26,7 @@ function getCurrentDate() {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
 
-// MD5 Signature তৈরির ফাংশন
+// MD5 Signature তৈরির ফাংশন (ASCII sort + key)
 function generateSign(params, secretKey) {
   const filtered = {};
   for (const key of Object.keys(params)) {
@@ -82,16 +82,18 @@ app.get('/', (req, res) => {
           <select id="bank_code" required>
             <option value="2222">bKash (2222)</option>
             <option value="2221">Nagad (2221)</option>
+            <option value="baksh">bKash (baksh)</option>
+            <option value="ngand">Nagad (ngand)</option>
           </select>
 
-          <label>মোবাইল নাম্বার (১১ ডিজিট):</label>
+          <label>মোবাইল নাম্বার (১১ ডিজিট, শুরু 0 দিয়ে):</label>
           <input type="text" id="receive_account" placeholder="017xxxxxxxx" maxlength="11" required />
 
-          <label>গ্রাহকের নাম:</label>
-          <input type="text" id="receive_name" value="Customer" required />
+          <label>গ্রাহকের নাম (কমপক্ষে ৬ অক্ষর):</label>
+          <input type="text" id="receive_name" value="Customer" minlength="6" required />
 
-          <label>টাকার পরিমাণ (BDT):</label>
-          <input type="number" id="transfer_amount" placeholder="100" min="100" step="1" required />
+          <label>টাকার পরিমাণ (পূর্ণসংখ্যা):</label>
+          <input type="number" id="transfer_amount" placeholder="100" min="10" step="1" required />
 
           <button type="submit" id="btnSubmit" class="submit-btn">Send Payout</button>
         </form>
@@ -107,7 +109,7 @@ app.get('/', (req, res) => {
             const res = await fetch('/api/balance');
             const data = await res.json();
             if (data.respCode === "SUCCESS") {
-              bal.innerText = "Available Balance: " + data.availableAmount + " BDT";
+              bal.innerText = "Available Balance: " + (data.availableAmount || data.balance || "0") + " BDT";
             } else {
               bal.innerText = "Error: " + (data.errorMsg || data.respCode || "Failed");
             }
