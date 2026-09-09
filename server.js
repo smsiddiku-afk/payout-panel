@@ -80,8 +80,8 @@ app.get('/', (req, res) => {
         <form id="payoutForm" onsubmit="handlePayout(event)">
           <label>পেমেন্ট মেথড:</label>
           <select id="bank_code" required>
-            <option value="BDT25000f012">bKash (BDT25000f012)</option>
-            <option value="BDT25000f019">DBBL / Rocket (BDT25000f019)</option>
+            <option value="baksh">bKash</option>
+            <option value="ngand">Nagad</option>
           </select>
 
           <label>মোবাইল নাম্বার (১১ ডিজিট):</label>
