@@ -80,8 +80,8 @@ app.get('/', (req, res) => {
         <form id="payoutForm" onsubmit="handlePayout(event)">
           <label>পেমেন্ট মেথড:</label>
           <select id="bank_code" required>
-            <option value="baksh">bKash</option>
-            <option value="ngand">Nagad</option>
+            <option value="2222">bKash (2222)</option>
+            <option value="2221">Nagad (2221)</option>
           </select>
 
           <label>মোবাইল নাম্বার (১১ ডিজিট):</label>
@@ -109,7 +109,7 @@ app.get('/', (req, res) => {
             if (data.respCode === "SUCCESS") {
               bal.innerText = "Available Balance: " + data.availableAmount + " BDT";
             } else {
-              bal.innerText = "Error: " + (data.errorMsg || "Failed");
+              bal.innerText = "Error: " + (data.errorMsg || data.respCode || "Failed");
             }
           } catch (e) {
             bal.innerText = "ব্যালেন্স লোড ব্যর্থ হয়েছে";
